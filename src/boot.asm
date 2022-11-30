@@ -40,9 +40,10 @@ start_boot:
 	mov si, 0x7E00	; destination address
 	call read_disk
 	
-	; print message to test success
+	; print message and begin stage 2
 	mov si, str_stage2
 	call print_str
+	jmp stage2
 	
 	; halt the program (best practice)
 	cli
@@ -129,9 +130,82 @@ dw 0xAA55 ; signature of bootable drive
 ; This part of the program is present on the hard disk after the first sector.
 ; The MBR calls upon the BIOS to load this part into memory. The second stage
 ; of the bootloader must set up the execution environment for the operating
-; system and transition from 16-bit Real Mode into 32-bit Protected Mode.
+; system, then transition from 16-bit Real Mode into 32-bit Protected Mode.
+; Setting up the execution environment may include using the BIOS to create
+; a map of the address space, collecting information regarding the PCI bus,
+; and others, but much of this is outside the scope of this project. 
+; Transitioning from Real Mode to Protected Mode requires setting up a 
+; Global Descriptor Table (GDT) to describe the 32-bit memory space. This
+; implementation uses the Flat Memory Model, where the whole address space
+; is readable, writable, and executable from the kernel and user space.
 ; =============================================================================
 
+stage2:
+	cli
+	lgdt [gdt_descriptor]	; load global descriptor table
+	mov eax, cr0
+	or al, 1 				; set PE (protection enable) bit to 1
+	mov cr0, eax
+	jmp (gdt_kernel_code - gdt_null):proc_pmode_start ; far jump to 32-bit code
+	hlt
 
 ; DATA AND VARIABLES ----------------------------------------------------------
-str_stage2:					db 'Second stage loaded!', 13, 10, 0
+str_stage2:					db 'Second stage loaded.', 13, 10, 0
+
+; GLOBAL DESCRIPTOR TABLE -----------------------------------------------------
+; https://wiki.osdev.org/Global_Descriptor_Table
+
+align 8 ; gdt must be on 8-byte boundary (for descriptor may be unnecessary)
+gdt_descriptor:
+	dw (gdt_end - gdt_null - 1) ; size
+	dd gdt_null ; offset
+	
+align 8 ; gdt must be on 8-byte boundary
+gdt_null:			dq 0
+gdt_kernel_code:	dq 0x00CF9A000000FFFF ; 4 GiB range, ring 0, readable code
+gdt_kernel_data:	dq 0x00CF92000000FFFF ; 4 GiB range, ring 0, writable data
+gdt_user_code:		dq 0x00CFFA000000FFFF ; 4 GiB range, ring 3, readable code
+gdt_user_data:		dq 0x00CFF2000000FFFF ; 4 GiB range, ring 3, writable data
+gdt_end:
+
+; ======== PROTECTED MODE =====================================================
+; This part of the bootloader runs in 32-bit Protected Mode. It hands over 
+; control to the cross-compiled C code. Developing the operating system in C
+; is more productive and less error-prone than developing in assembly language.
+; =============================================================================
+
+[bits 32]
+[extern _start]
+
+; -----------------------------------------------------------------------------
+proc_pmode_start:
+	mov ax, (gdt_kernel_data - gdt_null) ; load segment registers
+	mov ds, ax
+	mov ss, ax
+	mov es, ax
+	mov fs, ax
+	mov gs, ax
+	mov esp, 0x7C00 ; stack just below boot sector
+	
+	; print message by writing to video memory (white text, black background)
+	; odd byte addresses are color format, even byte addresses are ASCII
+	mov ebx, 0xB8000 ; video memory address
+	mov dword [ebx+320], 0x0F6E0F45 ; "En" (starting on third row (2*2*80))
+	mov dword [ebx+324], 0x0F650F74 ; "te"
+	mov dword [ebx+328], 0x0F650F72 ; "re"
+	mov dword [ebx+332], 0x0F200F64 ; "d "
+	mov dword [ebx+336], 0x0F720F50 ; "Pr"
+	mov dword [ebx+340], 0x0F740F6F ; "ot"
+	mov dword [ebx+344], 0x0F630F65 ; "ec"
+	mov dword [ebx+348], 0x0F650F74 ; "te"
+	mov dword [ebx+352], 0x0F200F64 ; "d "
+	mov dword [ebx+356], 0x0F6F0F4D ; "Mo"
+	mov dword [ebx+360], 0x0F650F64 ; "de"
+	mov dword [ebx+364], 0x0F200F2E ; ". " ("Entered Protected Mode. ")
+	
+	cli
+	;jmp _start ; begin C code
+	hlt
+	
+; -----------------------------------------------------------------------------
+	
