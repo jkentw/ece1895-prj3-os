@@ -204,7 +204,7 @@ proc_pmode_start:
 	mov dword [ebx+364], 0x0F200F2E ; ". " ("Entered Protected Mode. ")
 	
 	cli
-	;jmp _start ; begin C code
+	jmp _start ; begin C code
 	hlt
 	
 ; -----------------------------------------------------------------------------
