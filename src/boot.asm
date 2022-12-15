@@ -1,5 +1,5 @@
 ; J. Kent Wirant
-; 30 Nov. 2022
+; 14 Dec. 2022
 ; ECE 1895 - Project 3
 ; Bootloader
 
@@ -35,7 +35,7 @@ start_boot:
 	
 	; load second stage into memory
 	mov ebx, 1 		; start from second sector (first is index 0)
-	mov cx, 15		; read 15 sectors
+	mov cx, 127		; read 127 sectors
 	mov dl, 0x80	; hard disk drive 0 (boot drive)
 	mov si, 0x7E00	; destination address
 	call read_disk
