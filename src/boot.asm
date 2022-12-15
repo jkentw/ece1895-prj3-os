@@ -35,7 +35,7 @@ start_boot:
 	
 	; load second stage into memory
 	mov ebx, 1 		; start from second sector (first is index 0)
-	mov cx, 127		; read 127 sectors
+	mov cx, 60		; read 60 sectors
 	mov dl, 0x80	; hard disk drive 0 (boot drive)
 	mov si, 0x7E00	; destination address
 	call read_disk
@@ -203,7 +203,7 @@ proc_pmode_start:
 	mov dword [ebx+360], 0x0F650F64 ; "de"
 	mov dword [ebx+364], 0x0F200F2E ; ". " ("Entered Protected Mode. ")
 	
-	cli
+	sti ; enable interrupts
 	jmp _start ; begin C code
 	hlt
 	

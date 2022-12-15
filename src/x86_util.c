@@ -38,3 +38,14 @@ void x86_outw(uint16_t port, uint16_t data) {
 void x86_outd(uint16_t port, uint32_t data) {
 	asm volatile ("out %%ax, %%dx" : : "a" (data), "d" (port) : "memory");
 }
+
+//referenced https://wiki.osdev.org/Model_Specific_Registers
+//read from model specific register 
+void x86_readMSR(uint32_t msr, uint32_t *lo, uint32_t *hi) {
+	asm volatile ("rdmsr" : "=a" (lo), "=d" (hi) : "c" (msr));
+}
+
+//write to model specific register 
+void x86_writeMSR(uint32_t msr, uint32_t lo, uint32_t hi) {
+	asm volatile ("wrmsr" : : "a" (lo), "d" (hi), "c" (msr));
+}

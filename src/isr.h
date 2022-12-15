@@ -14,5 +14,6 @@
 #define INTERRUPT_HANDLER __attribute__((interrupt))
 
 INTERRUPT_HANDLER void isr_test(struct interrupt_frame *f);
+INTERRUPT_HANDLER void isr_keyboard(struct interrupt_frame *f);
 
 #endif //ISR_H

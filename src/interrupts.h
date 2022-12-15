@@ -11,17 +11,14 @@
 
 #include <stdint.h> //fixed-size integer types
 
-struct interrupt_frame;/* {
-    uint32_t ip;
-    uint32_t cs;
-    uint32_t flags;
-    uint32_t sp;
-    uint32_t ss;
-} __attribute__((packed));*/
+struct interrupt_frame;
 
 void setInterruptDescriptor(void (*isr)(struct interrupt_frame *),
   uint8_t index, uint8_t isException);
 
 void loadIdt(void);
+
+void pic_init(void);
+void pic_eoi(uint8_t irqLine);
 
 #endif

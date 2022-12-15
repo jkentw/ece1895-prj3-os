@@ -33,8 +33,14 @@ void test_textUtils1(void) {
 }
 
 void test_interrupts1(void) {
-	setInterruptDescriptor(*isr_test, 32, 0);
+	setInterruptDescriptor(*isr_test, 0x40, 0);
 	loadIdt();
-	asm volatile ("int %0" :: "g" (32) : "memory");
+	asm volatile ("int %0" :: "g" (0x40) : "memory");
 }
 
+void test_pic1(void) {
+	setInterruptDescriptor(*isr_keyboard, 0x21, 0);
+	loadIdt();
+	setCursorPosition(0, 0);
+	pic_init();
+}

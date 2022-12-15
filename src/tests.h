@@ -10,5 +10,6 @@
 
 void test_textUtils1(void);
 void test_interrupts1(void);
+void test_pic1(void);
 
 #endif //TESTS_H

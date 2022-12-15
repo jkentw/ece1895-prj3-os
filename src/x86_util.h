@@ -18,4 +18,9 @@ void x86_outb(uint16_t port, uint8_t data);
 void x86_outw(uint16_t port, uint16_t data);
 void x86_outd(uint16_t port, uint32_t data);
 
+//read from model specific register 
+void x86_readMSR(uint32_t msr, uint32_t *lo, uint32_t *hi);
+//write to model specific register 
+void x86_writeMSR(uint32_t msr, uint32_t lo, uint32_t hi);
+
 #endif //X86_UTIL_H

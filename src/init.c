@@ -18,5 +18,6 @@ typedef unsigned long int size_t;
 void _start(void) {
 	test_textUtils1();
 	test_interrupts1();
+	test_pic1();
 	while(1); //hang
 }

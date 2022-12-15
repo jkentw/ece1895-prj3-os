@@ -1,5 +1,5 @@
 /* J. Kent Wirant
- * 14 Dec. 2022
+ * 15 Dec. 2022
  * ECE 1895 - Project 3
  * interrupts.c
  * Description: Sets up Interrupt Descriptor Table (IDT) and
@@ -7,6 +7,12 @@
  */
 
 #include "interrupts.h"
+#include "x86_util.h"
+
+#define PIC0_CMD_STAT 0x20 //primary PIC command/status I/O port
+#define PIC0_IMR_DATA 0x21 //primary interrupt mask register/data register
+#define PIC1_CMD_STAT 0xA0 //secondary PIC command/status I/O port
+#define PIC1_IMR_DATA 0xA1 //secondary PIC interrupt mask register/data register
 
 //for simplicity, everything will run in ring 0 (highest privilege)
 
@@ -46,4 +52,42 @@ void loadIdt(void) {
 	asm volatile ("lidt %0" : : "m" (idtd));
 }
 
+//source: http://www.brokenthorn.com/Resources/OSDevPic.html
+void pic_init(void) {
+	//disable APIC
+	uint32_t apicBase;
+	uint32_t unused;
+	x86_readMSR(0x1B, &apicBase, &unused);
+	x86_writeMSR(0x1B, apicBase & 0xFFFF0000, 0);
+	
+	//initialization control words
+	int icw1   = 0x11; //initialization word
+	int icw2_0 = 0x20; //PIC0 maps to interrupt vectors 0x20-0x27
+	int icw2_1 = 0x28; //PIC1 maps to interrupt vectors 0x28-0x2F
+	int icw3_0 = 0x04; //tell PIC0 to cascade with PIC1 on IRQ line 2 (bit 2)
+	int icw3_1 = 0x02; //tell PIC1 that it's cascaded with PIC0 on line 2 (value is 2)
+	int icw4   = 0x01; //the PICs are part of the x86 architecture
+	
+	//some delay might be required after each I/O operation
+	
+	x86_outb(PIC0_CMD_STAT, icw1); //initialization command
+	x86_outb(PIC1_CMD_STAT, icw1);
+	x86_outb(PIC0_IMR_DATA, icw2_0); //map interrupt vectors
+	x86_outb(PIC1_IMR_DATA, icw2_1);
+	x86_outb(PIC0_IMR_DATA, icw3_0); //master PIC cascade config
+	x86_outb(PIC1_IMR_DATA, icw3_1); //slave PIC cascade config
+	x86_outb(PIC0_IMR_DATA, icw4); //x86
+	x86_outb(PIC1_IMR_DATA, icw4); //x86
+	
+	//enable only keyboard and PIC1 interrupts
+	x86_outb(PIC0_IMR_DATA, ~0x06);
+	x86_outb(PIC1_IMR_DATA, ~0x00);
+}
+
+//end of interrupt
+void pic_eoi(uint8_t irqLine) {
+	if(irqLine >= 8) //send to slave only if IRQ came from it
+		x86_outb(PIC1_CMD_STAT, 0x20); //EOI code is 0x20
+	x86_outb(PIC0_CMD_STAT, 0x20); //send to master regardless
+}
 
