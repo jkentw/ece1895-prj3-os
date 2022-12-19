@@ -1,7 +1,7 @@
 /* J. Kent Wirant
- * 14 Dec. 2022
+ * 19 Dec. 2022
  * ECE 1895 - Project 3
- * interrupts.c
+ * tests.c
  * Description: Test functions for various OS features.
  */
 
@@ -10,6 +10,7 @@
 #include "string_util.h"
 #include "interrupts.h"
 #include "isr.h"
+#include "keyboard.h"
 
 void test_textUtils1(void) {
 	const char *str1 = "Text Utilities Test: ";
@@ -33,14 +34,31 @@ void test_textUtils1(void) {
 }
 
 void test_interrupts1(void) {
-	setInterruptDescriptor(*isr_test, 0x40, 0);
+	setInterruptDescriptor(isr_test, 0x40, 0);
 	loadIdt();
 	asm volatile ("int %0" :: "g" (0x40) : "memory");
 }
 
 void test_pic1(void) {
-	setInterruptDescriptor(*isr_keyboard, 0x21, 0);
+	setInterruptDescriptor(isr_keyboard, 0x21, 0);
 	loadIdt();
 	setCursorPosition(0, 0);
 	pic_init();
+}
+
+void test_keyboard1_handler(char c, uint8_t keyCode, uint16_t flags) {
+	char str[5];
+	intToHexStr(str, keyCode, 2);
+	str[2] = ' ';
+	str[3] = ' ';
+	str[4] = 0;
+	printRaw(str);
+}
+
+void test_keyboard1(void) {
+	setInterruptDescriptor(isr_keyboard, 0x21, 0);
+	loadIdt();
+	setCursorPosition(0, 0);
+	pic_init();
+	keyboard_init(test_keyboard1_handler);
 }

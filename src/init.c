@@ -1,7 +1,7 @@
 /* J. Kent Wirant
  * 14 Dec. 2022
  * ECE 1895 - Project 3
- * Initialization Code
+ * init.c
  * Description:
  *   This code is called directly by the bootloader. It initializes the 
  *   Operating System by loading all necessary drivers and starting the
@@ -16,8 +16,6 @@ typedef unsigned long int size_t;
  
 //entry point from bootloader
 void _start(void) {
-	test_textUtils1();
-	test_interrupts1();
-	test_pic1();
+	test_keyboard1();
 	while(1); //hang
 }

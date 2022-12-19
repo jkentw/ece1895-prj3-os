@@ -1,5 +1,5 @@
 /* J. Kent Wirant
- * 10 Dec. 2022
+ * 19 Dec. 2022
  * ECE 1895 - Project 3
  * string_util.c
  * Description: Custom string functions somewhat resembling those in

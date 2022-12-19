@@ -11,6 +11,7 @@
 #include "interrupts.h"
 #include "text_util.h"
 #include "string_util.h"
+#include "keyboard.h"
 
 INTERRUPT_HANDLER void isr_test(struct interrupt_frame *f) {
 	const char *str = "Interrupt :)";
@@ -20,9 +21,7 @@ INTERRUPT_HANDLER void isr_test(struct interrupt_frame *f) {
 }
 
 INTERRUPT_HANDLER void isr_keyboard(struct interrupt_frame *f) {
-	const char *str = "Keyboard ";
-	setTextColor(COLOR_LIGHT_GREEN, COLOR_BLUE);
-	printRaw(str);
+	keyboard_checkInput();
 	pic_eoi(1);
 }
 
