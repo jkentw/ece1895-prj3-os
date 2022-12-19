@@ -12,6 +12,7 @@
 #include "x86_util.h"
 #include "text_util.h"
 #include "string_util.h"
+#include "keyboard.h"
 
 #define KEYBOARD_CMD_QUEUE_SIZE 16
 
@@ -41,12 +42,6 @@ enum KeyboardState {
 	STATE_PAUSE_RL
 } keyboardState = STATE_START;
 
-//move to header file
-//abstracts the command interface for the keyboard controller
-enum CommandID {
-	CMD_SCAN_CODE_SET //others possible
-};
-
 struct Command {
 	enum CommandID cmdId;
 	uint8_t data;
@@ -68,9 +63,60 @@ uint16_t keyFlags = 0;
 //callback function
 void (*keyEventHandler)(char c, uint8_t keyCode, uint16_t flags) = 0;
 
-//use scan code set 1 (if possible)
-//amend or implement this
-//uint8_t scanCodeTable[256];
+//uses scan code set 1
+char scanCodeTable[] = {
+	0x00, 0x1B, '1',  '2',
+	'3',  '4',  '5',  '6',
+	'7',  '8',  '9',  '0',
+	'-',  '=',  '\b', '\t',
+	'q',  'w',  'e',  'r',
+	't',  'y',  'u',  'i',
+	'o',  'p',  '[',  ']',
+	'\n', 0x02, 'a',  's',
+	'd',  'f',  'g',  'h',
+	'j',  'k',  'l',  ';',
+	'\'', '`',  0x03, '\\',
+	'z',  'x',  'c',  'v',
+	'b',  'n',  'm',  ',',
+	'.',  '/',  0x04, '*',
+	0x05, ' ',  0x06, 0x07,
+	0x0E, 0x0F, 0x10, 0x11,
+	0x12, 0x13, 0x14, 0x15,
+	0x16, 0x17, 0x18, '7', //keypad entries
+	'8',  '9',  '-',  '4',
+	'5',  '6',  '+',  '1',
+	'2',  '3',  '0',  '.',
+	0x00, 0x00, 0x00, 0x19,
+	0x1A, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x1C, 0x00, 0x00, 0x00, //extended key codes; add 0x50 to access
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x1D, 0x00, 0x00,
+	'\n', 0x1E, 0x00, 0x00, 
+	0xFF, 0xFF, 0xFF, 0x00, //0xFF -> key exists but is unimplemented
+	0xFF, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0xFF, 0x00,
+	0xFF, 0x00, 0xFF, 0x00,
+	0x00, '/',  0x00, 0x00,
+	0x1F, 0x00, 0x00, 0x00, //0x38
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x80,
+	0x81, 0x82, 0x00, 0x83,
+	0x00, 0x84, 0x00, 0x85,
+	0x86, 0x87, 0x88, 0x7F,
+	0x00, 0x00, 0x00, 0x00, //0x54
+	0x00, 0x00, 0x00, 0x89,
+	0x8A, 0x8B, 0x8C, 0x8D,
+	0x00, 0x00, 0x00, 0x8E,
+	0x00, 0x8F, 0x90, 0x91, //0x64
+	0x92, 0x93, 0x94, 0x95,
+	0x96, 0x97, 0x00, 0x00  //0x6C
+};
+
+
+
 
 struct Command cmdQueue[KEYBOARD_CMD_QUEUE_SIZE];
 uint32_t queueStart = 0;
@@ -103,13 +149,72 @@ uint8_t keyboard_queueCommand(enum CommandID id, uint8_t data) {
 }
 
 void processScanCode(uint8_t scancode) {
-	//TODO: implement scan code translation and states
-	//handle keyflags too
+	//TODO: handle keyflags and apply modifiers
 	
-	if(keyEventHandler != 0)
-		keyEventHandler('#', scancode, keyFlags);
-		
-	keyboardState = STATE_START;
+	char c = 0;
+	
+	//state transitions
+	if(keyboardState == STATE_START) {
+		if(scancode == 0xE0) {
+			keyboardState = STATE_EXTENDED_CODE;
+		} 
+		else if(scancode == 0xE1) {
+			keyboardState = STATE_PAUSE;
+		}
+		else {
+			keyboardState = STATE_START;
+			c = scanCodeTable[scancode & 0x7F];
+		}
+	} 
+	else if(keyboardState == STATE_EXTENDED_CODE) {
+		if(scancode == 0x2A) {
+			keyboardState = STATE_PRTSC_PR1;
+		}
+		else if(scancode == 0xB7) {
+			keyboardState = STATE_PRTSC_RL1;
+		}
+		else {
+			keyboardState = STATE_START;
+			//c = scanCodeTable[(scancode & 0x7F) + 0x50];
+		}
+	}
+	else if(keyboardState == STATE_PAUSE) {
+		if(scancode == 0x1D) {
+			keyboardState = STATE_PAUSE_PR;
+		}
+		else if(scancode == 0x45) {
+			keyboardState = STATE_PAUSE_RL;
+		}
+		else {
+			keyboardState = STATE_START;
+		}
+	}
+	else if(keyboardState == STATE_PRTSC_PR1 && scancode == 0xE0) {
+		keyboardState = STATE_PRTSC_PR2;
+	}
+	else if(keyboardState == STATE_PRTSC_RL1 && scancode == 0xE0) {
+		keyboardState = STATE_PRTSC_RL2;
+	}
+	else if(keyboardState == STATE_PAUSE_PR && scancode == 0x45) {
+		keyboardState = STATE_START;
+	}
+	else if(keyboardState == STATE_PAUSE_RL && scancode == 0xC5) {
+		keyboardState = STATE_START;
+	}
+	else if(keyboardState == STATE_PRTSC_PR2 && scancode == 0x37) {
+		keyboardState = STATE_START;
+	}
+	else if(keyboardState == STATE_PRTSC_RL2 && scancode == 0xAA) {
+		keyboardState = STATE_START;
+	}
+	else {
+		keyboardState = STATE_START;
+	}
+	
+	//if a character was pressed, send it to the handler
+	if(c >= 0x20 && (scancode & 0x80) == 0 && keyEventHandler != 0) {
+		keyEventHandler(c, scancode, keyFlags);	
+	}
 }
 
 void tryCommand(void) {

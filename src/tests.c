@@ -47,11 +47,9 @@ void test_pic1(void) {
 }
 
 void test_keyboard1_handler(char c, uint8_t keyCode, uint16_t flags) {
-	char str[5];
-	intToHexStr(str, keyCode, 2);
-	str[2] = ' ';
-	str[3] = ' ';
-	str[4] = 0;
+	char str[2];
+	str[0] = c;
+	str[1] = 0;
 	printRaw(str);
 }
 
