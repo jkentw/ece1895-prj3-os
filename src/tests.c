@@ -53,10 +53,30 @@ void test_keyboard1_handler(char c, uint8_t keyCode, uint16_t flags) {
 	printRaw(str);
 }
 
+void test_keyboard1_handler2(char c, uint8_t keyCode, uint16_t flags) {
+	char str[9];
+	
+	//handle backspace
+	
+	str[0] = c;
+	str[1] = 0;
+	/*
+	str[1] = ' ';
+	str[2] = '(';
+	intToHexStr(&str[3], flags, 4);
+	str[7] = ')';
+	str[8] = 0;
+	*/
+	
+	//requres some kind of buffer manipulation, not just printraw(?)
+	printRaw(str);
+}
+
 void test_keyboard1(void) {
+	clearScreen();
 	setInterruptDescriptor(isr_keyboard, 0x21, 0);
 	loadIdt();
 	setCursorPosition(0, 0);
 	pic_init();
-	keyboard_init(test_keyboard1_handler);
+	keyboard_init(test_keyboard1_handler2);
 }
