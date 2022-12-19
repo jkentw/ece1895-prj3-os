@@ -40,3 +40,14 @@ size_t strlen(const char *s) {
 	return len;
 }
 
+void intToHexStr(char *dest, int val, int n) {
+	int rem;
+	dest[n] = 0;
+	
+	while(n > 0) {
+		n--;
+		rem = val & 0xF;
+		val >>= 4;
+		dest[n] = ((rem < 10) ? ('0' + rem) : ('A' + rem - 10)); 
+	}
+}

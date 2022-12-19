@@ -1,5 +1,5 @@
 /* J. Kent Wirant
- * 10 Dec. 2022
+ * 19 Dec. 2022
  * ECE 1895 - Project 3
  * string_util.h
  * Description: Custom string functions somewhat resembling those in
@@ -34,6 +34,9 @@ int strncmp(const char *s1, const char *s2, size_t n);
 
 //same as ANSI C definition
 size_t strlen(const char *s);
+
+//converts integer to hex string with n digits with null at the end
+void intToHexStr(char *dest, int val, int n);
 
 /* other useful functions:
  *   strchr
