@@ -132,7 +132,7 @@ char shiftTable[] = {
 uint16_t keyFlags = 0;
 
 //callback function
-void (*keyEventHandler)(char c, uint8_t keyCode, uint16_t flags) = 0;
+void (*keyEventHandler)(uint8_t c, uint8_t keyCode, uint16_t flags) = 0;
 
 struct Command cmdQueue[KEYBOARD_CMD_QUEUE_SIZE];
 uint32_t queueStart = 0;
@@ -143,7 +143,7 @@ uint8_t keyboard_queueCommand(enum CommandID id, uint8_t data);
 void processScanCode(uint8_t scancode);
 void tryCommand(void);
 uint8_t keyboard_checkInput(void);
-void keyboard_init(void (*handler)(char, uint8_t, uint16_t));
+void keyboard_init(void (*handler)(uint8_t, uint8_t, uint16_t));
 
 //returns true if sucessfully added to queue. Does not validate command.
 //automatically tries to execute (next) command if possible
@@ -165,7 +165,7 @@ uint8_t keyboard_queueCommand(enum CommandID id, uint8_t data) {
 }
 
 void processScanCode(uint8_t scancode) {
-	char c = 0;
+	uint8_t c = 0;
 	int bit = 0;
 	
 	//state transitions
@@ -190,7 +190,7 @@ void processScanCode(uint8_t scancode) {
 		}
 		else {
 			keyboardState = STATE_START;
-			//c = scanCodeTable[(scancode & 0x7F) + 0x50];
+			c = scanCodeTable[(scancode & 0x7F) + 0x50];
 		}
 	}
 	else if(keyboardState == STATE_PAUSE) {
@@ -226,38 +226,41 @@ void processScanCode(uint8_t scancode) {
 		keyboardState = STATE_START;
 	}
 	
-	if(c == 0x06) bit = 1; //CAPS lock
-	else if(c == 0x03) bit = 4; //left shift
-	else if(c == 0x04) bit = 5; //right shift
-	else if(c == 0x02) bit = 6; //left control
-	else if(c == 0x1E) bit = 7; //right control
-	else if(c == 0x05) bit = 8; //left alt
-	else if(c == 0x1F) bit = 9; //right alt
-	
-	//pressed/released flag
-	keyFlags &= ~1;
-	keyFlags |= ~(scancode >> 7) & 1;
-	
-	//set or clear appropriate bit in keyFlags
-	if(bit >= 4) {
-		if(scancode & 0x80) keyFlags &= ~(1 << bit); //released
-		else keyFlags |= (1 << bit); //pressed
-	}
-	else if(bit >= 1 && (scancode & 0x80) == 0) { //lock-type keys (toggle-based)
-		keyFlags ^= (1 << bit);
-	}
-	
-	//if a character was pressed, send it to the handler
-	if(c >= 0x20 && (scancode & 0x80) == 0 && keyEventHandler != 0) {
-		//switch letter to uppercase if (CAPS LOCK) XOR (R OR L shift)
-		if(c >= 'a' && c <= 'z' && (((keyFlags & 2) != 0) ^ ((keyFlags & 48) != 0))) {
-			c &= ~0x20;
+	//process key only if the keyboard state permits it
+	if(keyboardState == STATE_START) {
+		if(c == 0x06) bit = 1; //CAPS lock
+		else if(c == 0x03) bit = 4; //left shift
+		else if(c == 0x04) bit = 5; //right shift
+		else if(c == 0x02) bit = 6; //left control
+		else if(c == 0x1E) bit = 7; //right control
+		else if(c == 0x05) bit = 8; //left alt
+		else if(c == 0x1F) bit = 9; //right alt
+		
+		//pressed/released flag
+		keyFlags &= ~1;
+		keyFlags |= ~(scancode >> 7) & 1;
+		
+		//set or clear appropriate bit in keyFlags
+		if(bit >= 4) {
+			if(scancode & 0x80) keyFlags &= ~(1 << bit); //released
+			else keyFlags |= (1 << bit); //pressed
 		}
-		else if(scancode < 0x36 && (keyFlags & 48)) { //if R OR L shift is pressed
-			c = shiftTable[scancode & 0x7F];
+		else if(bit >= 1 && (scancode & 0x80) == 0) { //lock-type keys (toggle-based)
+			keyFlags ^= (1 << bit);
 		}
 		
-		keyEventHandler(c, scancode, keyFlags);	
+		//if a character was pressed, send it to the handler
+		if((scancode & 0x80) == 0 && keyEventHandler != 0) {
+			//switch letter to uppercase if (CAPS LOCK) XOR (R OR L shift)
+			if(c >= 'a' && c <= 'z' && (((keyFlags & 2) != 0) ^ ((keyFlags & 48) != 0))) {
+				c &= ~0x20;
+			}
+			else if(scancode < 0x36 && (keyFlags & 48)) { //if R OR L shift is pressed
+				c = shiftTable[scancode & 0x7F];
+			}
+			
+			keyEventHandler(c, scancode, keyFlags);
+		}
 	}
 }
 
@@ -322,7 +325,7 @@ uint8_t keyboard_checkInput(void) {
 	return isFull;
 }
 
-void keyboard_init(void (*handler)(char, uint8_t, uint16_t)) {
+void keyboard_init(void (*handler)(uint8_t, uint8_t, uint16_t)) {
 	//TODO: reset keyboard & check status
 	
 	keyEventHandler = handler;

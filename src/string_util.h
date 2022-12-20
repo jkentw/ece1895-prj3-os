@@ -20,11 +20,9 @@ typedef unsigned long int size_t;
 //char *strncat_safe(char *dest, const char *src, size_t n, size_t bufsize);
 
 /* Just like strncpy, but last character in dest string is always 
- * null-terimated, and no null-padding is performed. The length of the
- * destination string (including the null character) is at most bufsize
- * characters.
+ * null-terimated, and no null-padding is performed.
  */
-//char *strncpy_safe(char *dest, const char *src, size_t n, size_t bufsize);
+char *strncpy_safe(char *dest, const char *src, size_t n);
 
 //same as ANSI C definition
 int strcmp(const char *s1, const char *s2);

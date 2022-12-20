@@ -46,18 +46,15 @@ void test_pic1(void) {
 	pic_init();
 }
 
-void test_keyboard1_handler(char c, uint8_t keyCode, uint16_t flags) {
+void test_keyboard1_handler(uint8_t c, uint8_t keyCode, uint16_t flags) {
 	char str[2];
 	str[0] = c;
 	str[1] = 0;
 	printRaw(str);
 }
 
-void test_keyboard1_handler2(char c, uint8_t keyCode, uint16_t flags) {
+void test_keyboard1_handler2(uint8_t c, uint8_t keyCode, uint16_t flags) {
 	char str[9];
-	
-	//handle backspace
-	
 	str[0] = c;
 	str[1] = 0;
 	/*
@@ -68,7 +65,6 @@ void test_keyboard1_handler2(char c, uint8_t keyCode, uint16_t flags) {
 	str[8] = 0;
 	*/
 	
-	//requres some kind of buffer manipulation, not just printraw(?)
 	printRaw(str);
 }
 

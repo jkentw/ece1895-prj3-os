@@ -1,5 +1,5 @@
 /* J. Kent Wirant
- * 18 Dec. 2022
+ * 19 Dec. 2022
  * ECE 1895 - Project 3
  * keyboard.h
  * Description: PS/2 keyboard driver plus enabling A20.
@@ -17,5 +17,5 @@ enum CommandID {
 
 //function prototypes
 uint8_t keyboard_queueCommand(enum CommandID id, uint8_t data);
-void keyboard_init(void (*handler)(char, uint8_t, uint16_t));
+void keyboard_init(void (*handler)(uint8_t, uint8_t, uint16_t));
 uint8_t keyboard_checkInput(void);

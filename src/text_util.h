@@ -1,5 +1,5 @@
 /* J. Kent Wirant
- * 08 Dec. 2022
+ * 19 Dec. 2022
  * ECE 1895 - Project 3
  * text_util.h
  * Description:
@@ -33,6 +33,7 @@ static const char COLOR_WHITE			= 15;
 void setCursorPosition(char row, char col);
 void setTextColor(char foreground, char background);
 void printRaw(const char *str);
+void highlight(char row, char col);
 
 void clearScreen(void);
 //void printf(const char *fmt, ...);
