@@ -33,18 +33,11 @@ int strncmp(const char *s1, const char *s2, size_t n);
 //same as ANSI C definition
 size_t strlen(const char *s);
 
-//converts integer to hex string with n digits with null at the end
+//converts integer to hex string with n digits and null at the end 
 void intToHexStr(char *dest, int val, int n);
 
-/* other useful functions:
- *   strchr
- *   strstr
- *   strtok (not a reentrant function)
- *   memchr
- *   memcpy
- *   memset
- *   memmove
- *   memcmp
- */
+//parses integer from hex string with n digits. 
+//input is assumed to be valid.
+int hexStrToInt(const char *src, int n);
 
 #endif

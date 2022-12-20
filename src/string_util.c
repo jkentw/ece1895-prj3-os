@@ -1,5 +1,5 @@
 /* J. Kent Wirant
- * 19 Dec. 2022
+ * 20 Dec. 2022
  * ECE 1895 - Project 3
  * string_util.c
  * Description: Custom string functions somewhat resembling those in
@@ -55,4 +55,15 @@ void intToHexStr(char *dest, int val, int n) {
 		val >>= 4;
 		dest[n] = ((rem < 10) ? ('0' + rem) : ('A' + rem - 10)); 
 	}
+}
+
+int hexStrToInt(const char *src, int n) {
+	int val = 0;
+	
+	for(int i = 0; i < n; i++) {
+		val <<= 4;
+		val |= (src[i] <= '9') ? (src[i] - '0') : ((src[i] | 0x20) - 'a' + 10);
+	}
+	
+	return val;
 }
