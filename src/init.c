@@ -26,6 +26,8 @@ int cursorCol = 0;
 
 uint8_t hexBuffer[TERMINAL_ROWS * 16 * 2 + 1]; //account for null space
 uint8_t asciiBuffer[TERMINAL_ROWS * 16 + 1]; //account for null space
+uint8_t commandBuffer[32 + 1]; //account for null space
+uint8_t statusBuffer[32 + 1]; //account for null space
 uint8_t selectedBuffer = 0; //0 for hex, 1 for ascii, 2 for command
 
 uint32_t memLocation = 0x7000;
@@ -42,7 +44,7 @@ void updateDisplay(void) {
 	for(int i = 0; i < 80; i++) {
 		line[i] = ' ';
 	}
-	
+	strncpy_safe(line, "Press ESC to enter a command.", 29);
 	printRaw(line); //line 1
 	
 	//line 2
@@ -90,10 +92,28 @@ void updateDisplay(void) {
 		line[60] = '|';
 		line[61] = ' ';
 		line[78] = ' ';
-		line[79] = ' ';
-		
+		line[79] = ' ';	
 		printRaw(line);
 	}
+		
+	//line 24
+	strncpy_safe(line, " Commands: (goto <hex address>), (call <hex address>).", 54);
+	for(int i = 54; i < 80; i++) {
+		line[i] = ' ';
+	}
+	printRaw(line);
+	
+	//line 25
+	line[0] = '>';
+	line[1] = ' ';
+	
+	for(int i = 2; i < 80; i++) {
+		line[i] = ' ';
+	}
+	
+	strncpy_safe(&line[2], commandBuffer, 32);
+	strncpy_safe(&line[46], statusBuffer, 32);
+	printRaw(line);
 	
 	//convert cursor position to screen coordinates
 	char row = cursorRow + 3;
@@ -104,6 +124,10 @@ void updateDisplay(void) {
 	}
 	else if(selectedBuffer == 1) { //ascii: formatted as "####...####"
 		col = 62 + cursorCol / 2; //ascii offset
+	}
+	else if(selectedBuffer == 2) { //command buffer
+		col = 2 + cursorCol;
+		row = 24;
 	}
 	
 	highlight(row, col);
@@ -129,6 +153,88 @@ void updateMemory(void) {
 	}
 }
 
+void processCommand(void) {
+	int commandLength = 0;
+	int cmpLength = 4;
+	int address;
+	int addressOffset;
+	int addressLength;
+	uint8_t shouldParseAddress = 0;
+	uint8_t commandId = 0;
+	uint8_t isGood = 1;
+	
+	//clear status buffer
+	for(int i = 0; i < 32; i++) {
+		statusBuffer[i] = ' ';
+	}
+	
+	//find length of command by index of first space (or invisible char)
+	while(commandBuffer[commandLength] > 0x20 && commandLength < 32)
+		commandLength++;
+	
+	if(commandLength > 4)
+		cmpLength = commandLength;
+	
+	if(strncmp(commandBuffer, "goto", cmpLength) == 0) {
+		commandId = 1;
+		shouldParseAddress = 1;
+	}
+	else if(strncmp(commandBuffer, "call", cmpLength) == 0) {
+		commandId = 2;
+		shouldParseAddress = 1;
+	}
+	
+	if(shouldParseAddress) {
+		//bypass spaces
+		while(commandBuffer[commandLength] <= 0x20 && commandLength < 32) {
+			commandLength++;
+		}
+		
+		//start of 1st argument
+		addressOffset = commandLength;
+		
+		//get number of hex digits
+		while((commandBuffer[commandLength] >= '0' &&
+		  commandBuffer[commandLength] <= '9' ||
+		  (commandBuffer[commandLength] | 0x20) >= 'a' && 
+		  (commandBuffer[commandLength] | 0x20) <= 'f') && 
+		  commandLength < 32) {
+			commandLength++;
+		}
+		
+		addressLength = commandLength - addressOffset;
+		
+		//invalid literal
+		if(addressLength == 0 || commandBuffer[commandLength] > 0x20) {
+			strncpy_safe(statusBuffer, "[Invalid args; must be base 16]", 31);
+			isGood = 0;
+		}
+		else { //parse hex
+			address = hexStrToInt(&commandBuffer[addressOffset], addressLength);
+		}
+	}
+	
+	if(isGood) {
+		if(commandId == 1) { //goto
+			strncpy_safe(statusBuffer, "[goto successful]", 17);
+			memLocation = address;
+		}
+		else if(commandId == 2) {
+			strncpy_safe(statusBuffer, "[call successful]", 17);
+			((void (*)(void))address)();
+		}
+		else {
+			strncpy_safe(statusBuffer, "[Invalid command.]", 18);
+		}
+	}
+	
+	//clear command buffer
+	for(int i = 0; i < 32; i++) {
+		commandBuffer[i] = ' ';
+		cursorCol = 0; //reset cursor
+	}
+}
+
 void keyboardHandler(uint8_t c, uint8_t keyCode, uint16_t flags) {
 	
 	//ensure memory-buffer coherency
@@ -140,9 +246,18 @@ void keyboardHandler(uint8_t c, uint8_t keyCode, uint16_t flags) {
 		asciiBuffer[i] = memData;
 	}
 	
-	//change cursor if an arrow key was pressed
+	//change cursor if an arrow key was pressed OR enter command
 	
-	if(c == 0x81) { //up arrow
+	if(c == 0x1B) { //select command buffer
+		if(selectedBuffer == 2) selectedBuffer = 0;
+		else selectedBuffer = 2;
+		cursorCol = 0;
+		cursorRow = 0;
+	}
+	else if(c == '\n' && selectedBuffer == 2) { //command entered
+		processCommand();
+	}
+	else if(c == 0x81) { //up arrow
 		cursorCol &= ~1; //first hex digit, if applicable
 		cursorRow--;
 	}
@@ -192,6 +307,12 @@ void keyboardHandler(uint8_t c, uint8_t keyCode, uint16_t flags) {
 				cursorCol = 0;
 				cursorRow++;
 			}
+		} else if(selectedBuffer == 2) { //typed in command buffer
+			//any displayable character
+			if(c >= 0x20 && c < 0x7F) {
+				commandBuffer[cursorCol] = c;
+				cursorCol++;
+			}
 		}
 	}
 	
@@ -209,7 +330,7 @@ void keyboardHandler(uint8_t c, uint8_t keyCode, uint16_t flags) {
 			selectedBuffer = 0;
 			cursorCol = 30;
 		}
-		else if(selectedBuffer == 0) {
+		else if(selectedBuffer == 0 || selectedBuffer == 2) {
 			cursorCol = 0;
 		}
 	}
@@ -221,17 +342,10 @@ void keyboardHandler(uint8_t c, uint8_t keyCode, uint16_t flags) {
 		else if(selectedBuffer == 1) {
 			cursorCol = 30;
 		}
+		else if(selectedBuffer == 2) {
+			cursorCol = 31;
+		}
 	}
-	
-	char str[8];
-	str[0] = '>';
-	str[1] = ' ';
-	str[2] = c;
-	str[3] = ' ';
-	intToHexStr(&str[4], c, 2);
-	str[6] = 0;
-	setCursorPosition(24, 0);
-	printRaw(str);
 	
 	updateDisplay();
 }
@@ -243,6 +357,7 @@ void _start(void) {
 	loadIdt();
 	pic_init();
 	keyboard_init(keyboardHandler);
+	strncpy_safe(statusBuffer, "[J. Kent Wirant, 2022]", 22);
 	updateDisplay();
 	while(1); //hang
 }

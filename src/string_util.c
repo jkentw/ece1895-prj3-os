@@ -29,14 +29,16 @@ char *strncpy_safe(char *dest, const char *src, size_t n) {
 
 //same as ANSI C definition
 int strcmp(const char *s1, const char *s2) {
-	for(int i = 0; (s1[i] == s2[i]) && (s1[i] != 0); i++);
-	return *s1 - *s2;
+	int i;
+	for(i = 0; (s1[i] == s2[i]) && (s1[i] != 0); i++);
+	return s1[i] - s2[i];
 }
 
 //same as ANSI C definition
 int strncmp(const char *s1, const char *s2, size_t n) {
-	for(int i = 0; (i < n) && (s1[i] == s2[i]) && (s1[i] != 0); i++);
-	return *s1 - *s2;
+	int i;
+	for(i = 0; (i < n) && (s1[i] == s2[i]) && (s1[i] != 0); i++);
+	return (i < n) ? (s1[i] - s2[i]) : 0;
 }
 
 size_t strlen(const char *s) {
